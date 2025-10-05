@@ -1,0 +1,213 @@
+# ODP (OpenDocument Presentation) 技術仕様サマリー
+# バージョン: ODF 1.3 準拠
+
+# 1. パッケージ構造
+# ODPファイルは、複数のXMLファイルやリソースを格納したZIPアーカイブです。
+package_structure:
+  description: "ZIP圧縮されたコンテナフォーマット。"
+  mimetype:
+    file: "mimetype"
+    description: "ファイルのMIMEタイプを識別する。パッケージの先頭に非圧縮で配置する必要がある。"
+    content: "application/vnd.oasis.opendocument.presentation"
+  manifest:
+    file: "META-INF/manifest.xml"
+    description: "パッケージ内の全ファイルとそのMIMEタイプをリスト化する目録。"
+    root_element: "<manifest:manifest>"
+    entry_element: "<manifest:file-entry>"
+    attributes:
+      - name: "manifest:full-path"
+        description: "ファイルへのパス"
+      - name: "manifest:media-type"
+        description: "ファイルのMIMEタイプ"
+  standard_layout:
+    - file: "content.xml"
+      description: "スライドのコンテンツ（テキスト、図形など）。"
+    - file: "styles.xml"
+      description: "スタイル定義（レイアウト、書式設定など）。"
+    - file: "meta.xml"
+      description: "文書のメタデータ（作成者、作成日時など）。"
+    - file: "settings.xml"
+      description: "アプリケーション固有の設定（ズームレベルなど）。"
+    - directory: "Pictures/"
+      description: "埋め込み画像ファイル（PNG, JPEGなど）を格納。"
+    - directory: "Thumbnails/"
+      description: "プレビュー用のサムネイル画像（thumbnail.png）を格納。"
+
+# 2. コンテンツ (content.xml)
+# プレゼンテーションの本体。スライド、図形、テキストなどの構造を定義します。
+content_xml:
+  file: "content.xml"
+  root_element: "<office:document-content>"
+  body_element: "<office:body>"
+  main_elements:
+    - element: "<office:presentation>"
+      description: "プレゼンテーション全体を内包するコンテナ。<draw:page>を子要素に持つ。"
+    - element: "<draw:page>"
+      description: "1枚のスライドに対応。"
+      attributes:
+        - name: "draw:name"
+          description: "スライド名"
+        - name: "draw:master-page-name"
+          description: "適用するマスターページをstyles.xmlから参照。"
+    - element: "<draw:text-box>"
+      description: "テキストを格納するフレーム。内部に<text:p>（段落）などを持つ。"
+      attributes:
+        - name: "presentation:class"
+          description: "スライド内での役割を定義（例: title, outline, subtitle）。"
+    - element: "<draw:rect>"
+      description: "長方形"
+      attributes:
+        - name: "svg:x, svg:y, svg:width, svg:height"
+          description: "位置とサイズを定義。"
+    - element: "<draw:ellipse>"
+      description: "楕円"
+      attributes:
+        - name: "svg:x, svg:y, svg:width, svg:height"
+          description: "位置とサイズを定義。"
+    - element: "<draw:image>"
+      description: "画像を表示するフレーム。"
+      attributes:
+        - name: "xlink:href"
+          description: "画像ファイルへのパス（例: Pictures/image1.png）。"
+    - element: "<presentation:notes>"
+      description: "発表者用のノートを格納。<draw:page>の子要素。"
+
+# 3. スタイル (styles.xml)
+# プレゼンテーションの見た目（レイアウト、フォント、色など）を一元管理します。
+styles_xml:
+  file: "styles.xml"
+  root_element: "<office:document-styles>"
+  style_types:
+    - name: "共通スタイル"
+      element: "<office:styles>"
+      description: "名前付きで再利用可能なスタイル（例: 「見出し1」）。"
+    - name: "自動スタイル"
+      element: "<office:automatic-styles>"
+      description: "直接書式設定を適用した際に自動生成されるスタイル。"
+  main_elements:
+    - element: "<style:master-page>"
+      description: "複数スライドで共有される背景やヘッダーなどを定義。"
+      attributes:
+        - name: "style:page-layout-name"
+          description: "ページの物理的なプロパティを定義する<style:page-layout>を参照。"
+    - element: "<style:presentation-page-layout>"
+      description: "「タイトルスライド」のようなレイアウトテンプレートを定義。プレースホルダー図形を含む。"
+  properties_elements:
+    - element: "<style:graphic-properties>"
+      description: "図形のスタイル（塗りつぶし、線など）を定義。"
+      attributes:
+        - "fo:background-color"
+        - "svg:stroke-color"
+        - "svg:stroke-width"
+    - element: "<style:text-properties>"
+      description: "文字のスタイル（フォント、サイズ、色など）を定義。"
+      attributes:
+        - "fo:font-family"
+        - "fo:font-size"
+        - "fo:color"
+    - element: "<style:paragraph-properties>"
+      description: "段落のスタイル（行揃え、インデントなど）を定義。"
+      attributes:
+        - "fo:text-align"
+        - "fo:margin-left"
+
+# 4. 動的要素 (content.xml / styles.xml)
+# 画面切り替えやアニメーションなど、動的な表現を定義します。
+dynamic_elements:
+  transitions:
+    description: "スライド間の画面切り替え効果。"
+    location: "<style:drawing-page-properties>内で定義され、<draw:page>に適用される。"
+    attributes:
+      - name: "presentation:transition-type"
+        description: "効果の種類（例: fade, wipe）"
+      - name: "presentation:transition-style"
+        description: "効果の方向（例: horizontal）"
+      - name: "presentation:transition-speed"
+        description: "速度（例: slow, medium, fast, PT5S）"
+  animations:
+    description: "SMILベースのアニメーション機能。"
+    container: "<presentation:animations>"
+    structure_elements:
+      - element: "<anim:par>"
+        description: "内部のアニメーションを並列（同時）に実行。"
+      - element: "<anim:seq>"
+        description: "内部のアニメーションを直列（順番）に実行。"
+    effect_elements:
+      - "<anim:animate>"
+      - "<anim:animateTransform>"
+      - "<anim:set>"
+    timing_attributes:
+      - name: "smil:begin"
+        description: "開始タイミング（例: 3s, shape-id.click）。"
+      - name: "smil:dur"
+        description: "継続時間。"
+    target_attribute:
+      name: "smil:targetElement"
+      description: "アニメーション対象の図形のIDを参照。"
+  interactivity:
+    - element: "<presentation:event-listener>"
+      description: "ユーザー操作（例: onClick）に応じてアクションをトリガー。"
+    - element: "<presentation:sound>"
+      description: "プレゼンテーションに音声を関連付ける。"
+
+# 5. メタデータ (meta.xml)
+# 文書に関する付随情報（誰が、いつ、何について書いたかなど）を格納します。
+meta_xml:
+  file: "meta.xml"
+  root_element: "<office:document-meta>"
+  elements:
+    - name: "Dublin Core"
+      description: "標準的なメタデータ。"
+      examples:
+        - "<dc:title>"
+        - "<dc:creator>"
+        - "<dc:date>"
+    - name: "ODF Specific"
+      description: "ODF固有のメタデータ。"
+      examples:
+        - "<meta:generator>"
+        - "<meta:initial-creator>"
+        - "<meta:creation-date>"
+        - "<meta:editing-cycles>"
+        - "<meta:document-statistic>"
+    - name: "User Defined"
+      element: "<meta:user-defined>"
+      description: "ユーザー定義のカスタムメタデータ。"
+
+# 6. 設定 (settings.xml)
+# アプリケーション固有の設定（コンテンツやレイアウトに影響しない）を保持します。
+settings_xml:
+  file: "settings.xml"
+  root_element: "<office:document-settings>"
+  description: "ビュー設定（ズームレベルなど）やプリンター設定などを格納。"
+  structure: "キーと値のペアとして<config:config-item-set>と<config:config-item>で構成される。"
+
+# 7. 主要なXML名前空間
+# ODF文書内で使用されるXML語彙を区別するための識別子です。
+namespaces:
+  - prefix: "office"
+    uri: "urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+  - prefix: "style"
+    uri: "urn:oasis:names:tc:opendocument:xmlns:style:1.0"
+  - prefix: "text"
+    uri: "urn:oasis:names:tc:opendocument:xmlns:text:1.0"
+  - prefix: "draw"
+    uri: "urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"
+  - prefix: "presentation"
+    uri: "urn:oasis:names:tc:opendocument:xmlns:presentation:1.0"
+  - prefix: "anim"
+    uri: "urn:oasis:names:tc:opendocument:xmlns:animation:1.0"
+  - prefix: "smil"
+    uri: "urn:oasis:names:tc:opendocument:xmlns:smil-compatible:1.0"
+  - prefix: "svg"
+    uri: "urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0"
+  - prefix: "xlink"
+    uri: "http://www.w3.org/1999/xlink"
+  - prefix: "dc"
+    uri: "http://purl.org/dc/elements/1.1/"
+  - prefix: "meta"
+    uri: "urn:oasis:names:tc:opendocument:xmlns:meta:1.0"
+  - prefix: "manifest"
+    uri: "urn:oasis:names:tc:opendocument:xmlns:manifest:1.0"
+  - prefix: "config"
+    uri: "urn:oasis:names:tc:opendocument:xmlns:config:1.0"
